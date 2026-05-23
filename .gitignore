@@ -1,0 +1,9 @@
+node_modules/
+dist/
+hippocampus/node_modules/
+hippocampus/.index/
+.env
+.decisions/.write-counter
+forge.db
+forge.db-shm
+forge.db-wal

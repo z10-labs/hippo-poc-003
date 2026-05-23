@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const target=i.tool_input?.file_path||i.tool_input?.pattern||i.tool_input?.path||'';if(target.includes('.decisions/records')||target.includes('.decisions/deferred')){console.error('[Hippocampus] Do not read decision files directly.\\nUse the query command instead:\\n  cd hippocampus && npm run hippocampus:query -- \\'describe what you need\\'');process.exit(2)}process.stdout.write(d)})\"",
+            "description": "Block direct reads of decision records — use hippocampus:query instead"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const cmd=(i.tool_input&&i.tool_input.command)||'';if(cmd.includes('hippocampus:log')){try{require('fs').writeFileSync(require('path').join(process.cwd(),'.decisions','.write-counter'),'0')}catch(e){}}process.stdout.write(d)})\"",
+            "description": "Reset write counter when hippocampus:log is called"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const fs=require('fs');const cf=require('path').join(process.cwd(),'.decisions','.write-counter');let n=0;try{n=parseInt(fs.readFileSync(cf,'utf8'))||0}catch(e){}n++;try{fs.writeFileSync(cf,String(n))}catch(e){}if(n>=5)console.error('[Hippocampus] '+n+' writes since last decision log. At a fork? Log it now: cd hippocampus && npm run hippocampus:log -- description --autonomous');process.stdout.write(d)})\"",
+            "description": "Nudge agent to log decisions after 5 consecutive writes without a log call"
+          }
+        ]
+      }
+    ]
+  }
+}

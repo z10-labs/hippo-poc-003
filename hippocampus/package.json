@@ -1,0 +1,20 @@
+{
+  "name": "hippocampus",
+  "version": "0.1.0",
+  "description": "Codebase memory layer — stores and retrieves architectural decisions",
+  "type": "module",
+  "scripts": {
+    "hippocampus:index": "tsx src/index.ts index",
+    "hippocampus:query": "tsx src/index.ts query",
+    "hippocampus:log": "tsx src/index.ts log",
+    "hippocampus": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}
