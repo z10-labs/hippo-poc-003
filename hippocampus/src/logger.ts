@@ -12,6 +12,17 @@ function prompt(rl: readline.Interface, question: string): Promise<string> {
   return new Promise(resolve => rl.question(question, resolve))
 }
 
+function parseRelationshipsFromDescription(description: string): string {
+  const seen = new Set<string>()
+  const pattern = /depends-on\s*:?\s*(DR-\d{4})/gi
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(description)) !== null) {
+    seen.add(match[1].toUpperCase())
+  }
+  if (seen.size === 0) return '- (none)'
+  return [...seen].map(id => `- depends-on: ${id}`).join('\n')
+}
+
 function today(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -98,6 +109,7 @@ export async function writeHeavyRecord(
     .join('\n\n') || '_No alternatives documented._'
 
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 50)
+  const finalRelationships = relationships || parseRelationshipsFromDescription(description)
 
   return writeRecordAtomic((id, drId) => `# ${drId}: ${title}
 
@@ -132,7 +144,7 @@ ${altSection}
 
 ## Relationships
 
-${relationships || '- (none)'}
+${finalRelationships}
 
 ## Review Trigger
 
@@ -172,6 +184,7 @@ export async function writeStandardRecord(
   }
 
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 50)
+  const finalRelationships = relationships || parseRelationshipsFromDescription(description)
 
   return writeRecordAtomic((id, drId) => `# ${drId}: ${title}
 
@@ -199,7 +212,7 @@ ${alternativesSkipped || 'None documented'}
 
 ## Relationships
 
-${relationships || '- (none)'}
+${finalRelationships}
 `, slug)
 }
 

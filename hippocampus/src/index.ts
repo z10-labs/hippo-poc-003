@@ -107,12 +107,14 @@ async function runLog() {
   if (classification.weight === 'heavy') {
     filePath = await writeHeavyRecord(description, isAutonomous, classification)
     console.log(`\nFull Decision Record written to: ${filePath}`)
+    await buildIndex(false)
     return
   }
 
   // standard
   filePath = await writeStandardRecord(description, isAutonomous, classification)
   console.log(`\nStandard decision record written to: ${filePath}`)
+  await buildIndex(false)
 }
 
 async function main() {
