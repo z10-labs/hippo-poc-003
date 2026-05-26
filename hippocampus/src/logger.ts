@@ -52,6 +52,12 @@ function parseAlternativesFromDescription(description: string): string {
     // "X would be simpler/easier/cleaner/etc" — X is the named-but-rejected option
     const would = s.match(/(?:^|;\s*)([\w][\w\s]{2,50}?)\s+would\s+be\s+(?:simpler|easier|faster|cleaner|sufficient|more|less)/i)
     if (would) found.push(would[1].trim())
+    // "X fails [requirement]" — sentence-start rejected option (allow hyphens for "in-memory" etc)
+    const fails = s.match(/^([\w][\w\s-]{2,40}?)\s+fails\b/i)
+    if (fails && !/^(this|the|it|a|an)\b/i.test(fails[1])) found.push(fails[1].trim())
+    // "X allows/requires [cost]" — sentence-start only; exclude anaphoric subjects
+    const allowsReq = s.match(/^([\w][\w\s-]{2,40}?)\s+(?:allows|requires)\b/i)
+    if (allowsReq && !/^(this|the|it|a|an)\b/i.test(allowsReq[1])) found.push(allowsReq[1].trim())
   }
 
   const seen = new Set<string>()
