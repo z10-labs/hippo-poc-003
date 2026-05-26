@@ -14,10 +14,15 @@ function prompt(rl: readline.Interface, question: string): Promise<string> {
 
 function parseRelationshipsFromDescription(description: string): string {
   const seen = new Set<string>()
-  const pattern = /depends-on\s*:?\s*(DR-\d{4})/gi
-  let match: RegExpExecArray | null
-  while ((match = pattern.exec(description)) !== null) {
-    seen.add(match[1].toUpperCase())
+  // Split on sentence boundaries, then collect all DR-NNNN tokens from any
+  // sentence that contains a "depends on" or "depends-on" phrase — handles
+  // natural prose ("Depends on DR-0001 and DR-0002") and token form ("depends-on DR-0001")
+  const sentences = description.split(/(?<=[.!?])\s+|(?<=\n)/)
+  for (const sentence of sentences) {
+    if (/depends[\s-]on/i.test(sentence)) {
+      const ids = sentence.match(/DR-\d{4}/gi) ?? []
+      for (const id of ids) seen.add(id.toUpperCase())
+    }
   }
   if (seen.size === 0) return '- (none)'
   return [...seen].map(id => `- depends-on: ${id}`).join('\n')
