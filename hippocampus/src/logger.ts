@@ -28,6 +28,44 @@ function parseRelationshipsFromDescription(description: string): string {
   return [...seen].map(id => `- depends-on: ${id}`).join('\n')
 }
 
+function parseAlternativesFromDescription(description: string): string {
+  const found: string[] = []
+  const sentences = description.split(/(?<=[.!?])\s+|(?<=\n)/)
+
+  for (const s of sentences) {
+    // "preferable to X (and to Y)"
+    if (/preferr?able to/i.test(s)) {
+      const parts = s.split(/preferr?able to/i)
+      for (const part of parts.slice(1)) {
+        const first = part.split(/\s*\(|\s+and\s+to\s/i)[0].trim()
+        if (first) found.push(first)
+        const andTo = part.match(/\s+and\s+to\s+([^(,;\n.]+)/i)
+        if (andTo) found.push(andTo[1].trim())
+      }
+    }
+    // "rather than X"
+    const rather = s.match(/rather than\s+([^(,;\n.]+)/i)
+    if (rather) found.push(rather[1].trim())
+    // "instead of X"
+    const instead = s.match(/instead of\s+([^(,;\n.]+)/i)
+    if (instead) found.push(instead[1].trim())
+    // "X would be simpler/easier/cleaner/etc" — X is the named-but-rejected option
+    const would = s.match(/(?:^|;\s*)([\w][\w\s]{2,50}?)\s+would\s+be\s+(?:simpler|easier|faster|cleaner|sufficient|more|less)/i)
+    if (would) found.push(would[1].trim())
+  }
+
+  const seen = new Set<string>()
+  const unique: string[] = []
+  for (const f of found) {
+    const key = f.toLowerCase().slice(0, 40)
+    if (!seen.has(key) && f.length > 2) {
+      seen.add(key)
+      unique.push(`- ${f.slice(0, 80).trim()}`)
+    }
+  }
+  return unique.length > 0 ? unique.join('\n') : 'None documented'
+}
+
 function today(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -108,10 +146,12 @@ export async function writeHeavyRecord(
     }
   }
 
-  const altSection = [alternativesA, alternativesB]
-    .filter(Boolean)
-    .map((a, i) => `### Option ${String.fromCharCode(65 + i)}\n- **Why rejected**: ${a}`)
-    .join('\n\n') || '_No alternatives documented._'
+  const altSection = [alternativesA, alternativesB].filter(Boolean).length > 0
+    ? [alternativesA, alternativesB]
+        .filter(Boolean)
+        .map((a, i) => `### Option ${String.fromCharCode(65 + i)}\n- **Why rejected**: ${a}`)
+        .join('\n\n')
+    : parseAlternativesFromDescription(description)
 
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 50)
   const finalRelationships = relationships || parseRelationshipsFromDescription(description)
@@ -190,6 +230,7 @@ export async function writeStandardRecord(
 
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 50)
   const finalRelationships = relationships || parseRelationshipsFromDescription(description)
+  const finalAlternatives = alternativesSkipped || parseAlternativesFromDescription(description)
 
   return writeRecordAtomic((id, drId) => `# ${drId}: ${title}
 
@@ -213,7 +254,7 @@ ${tradeOff || 'Not documented'}
 
 ## Alternatives Skipped
 
-${alternativesSkipped || 'None documented'}
+${finalAlternatives}
 
 ## Relationships
 
