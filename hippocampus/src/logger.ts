@@ -58,6 +58,9 @@ function parseAlternativesFromDescription(description: string): string {
     // "X allows/requires [cost]" — sentence-start only; exclude anaphoric subjects
     const allowsReq = s.match(/^([\w][\w\s-]{2,40}?)\s+(?:allows|requires)\b/i)
     if (allowsReq && !/^(this|the|it|a|an)\b/i.test(allowsReq[1])) found.push(allowsReq[1].trim())
+    // "rejected X (explanation)" — the agent's most consistent rejection form
+    const rejected = s.match(/\brejected\s+([^(,;\n.]+)/i)
+    if (rejected) found.push(rejected[1].trim())
   }
 
   const seen = new Set<string>()
