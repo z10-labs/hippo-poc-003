@@ -12,11 +12,21 @@ cd hippocampus && npm run hippocampus:query -- "describe what you are about to d
 
 The query output now shows inline **Why**, **Rejected alternatives**, and **Depends-on** for each result — read these directly rather than opening every record file.
 
+To browse all records by category (useful for discovering relevant precedent):
+
+```
+cd hippocampus && npm run hippocampus:list -- --category=data
+cd hippocampus && npm run hippocampus:list -- --category=api
+cd hippocampus && npm run hippocampus:list -- --weight=heavy
+```
+
 To trace the full dependency chain of a specific decision:
 
 ```
 cd hippocampus && npm run hippocampus:chain -- DR-NNNN
 ```
+
+Query output shows **Why**, **Rejected** (or `none documented` if no alternatives were recorded), and **Depends-on** inline. You do not need to open record files for most questions.
 
 After making any significant decision:
 

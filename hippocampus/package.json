@@ -6,6 +6,7 @@
   "scripts": {
     "hippocampus:index": "tsx src/index.ts index",
     "hippocampus:query": "tsx src/index.ts query",
+    "hippocampus:list": "tsx src/index.ts list",
     "hippocampus:chain": "tsx src/index.ts chain",
     "hippocampus:log": "tsx src/index.ts log",
     "hippocampus": "tsx src/index.ts"

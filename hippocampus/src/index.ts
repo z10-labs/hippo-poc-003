@@ -38,6 +38,9 @@ function formatResult(r: Awaited<ReturnType<typeof query>>[number], verbose: boo
       const altLines = alts.split('\n').slice(0, 3)
       lines.push(`  Rejected: ${altLines[0]}`)
       for (const a of altLines.slice(1)) lines.push(`           ${a}`)
+    } else {
+      // Explicitly show absence so agents don't open files to check
+      lines.push(`  Rejected: (none documented)`)
     }
 
     const deps = r.dependsOn ?? []
@@ -95,6 +98,37 @@ async function surfaceRelated(description: string): Promise<void> {
     }
   }
   console.log()
+}
+
+async function runList() {
+  const index = loadIndex()
+  const category = args.find(a => a.startsWith('--category='))?.split('=')?.[1]?.toLowerCase()
+  const weight = args.find(a => a.startsWith('--weight='))?.split('=')?.[1]?.toLowerCase()
+
+  let entries = index.entries
+  if (category) entries = entries.filter(e => e.category.toLowerCase() === category)
+  if (weight)   entries = entries.filter(e => e.weight.toLowerCase() === weight)
+
+  if (entries.length === 0) {
+    console.log(`No records match the given filters.`)
+    return
+  }
+
+  const filterDesc = [category && `category=${category}`, weight && `weight=${weight}`].filter(Boolean).join(', ')
+  console.log(`\nDecision records${filterDesc ? ` (${filterDesc})` : ''}:\n`)
+  console.log('─'.repeat(70))
+
+  for (const e of entries.sort((a, b) => a.id.localeCompare(b.id))) {
+    console.log(`${e.id}  (${e.category} · ${e.weight})  ${e.date}`)
+    console.log(`  ${e.title}`)
+    if (e.why) {
+      const short = e.why.length > 120 ? e.why.slice(0, 117) + '…' : e.why
+      console.log(`  Why: ${short}`)
+    }
+    const deps = e.relationships.filter(r => r.type === 'depends-on').map(r => r.target)
+    if (deps.length > 0) console.log(`  Depends on: ${deps.join(', ')}`)
+    console.log()
+  }
 }
 
 async function runChain() {
@@ -204,6 +238,9 @@ async function main() {
     case 'query':
       await runQuery()
       break
+    case 'list':
+      await runList()
+      break
     case 'chain':
       await runChain()
       break
@@ -219,8 +256,11 @@ Commands:
   npm run hippocampus:index -- --force   Full rebuild of the index
   npm run hippocampus:query -- "task"    Query relevant past decisions
   npm run hippocampus:query -- "task" --verbose  Include Why/Alternatives for all results
-  npm run hippocampus:chain -- DR-NNNN   Trace full dependency chain from a record
-  npm run hippocampus:log   -- "desc"    Classify and record a decision
+  npm run hippocampus:list                       List all records with inline Why
+  npm run hippocampus:list -- --category=data    Filter by category
+  npm run hippocampus:list -- --weight=heavy     Filter by weight
+  npm run hippocampus:chain -- DR-NNNN           Trace full dependency chain from a record
+  npm run hippocampus:log   -- "desc"            Classify and record a decision
       `.trim())
   }
 }
