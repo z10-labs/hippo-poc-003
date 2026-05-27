@@ -19,6 +19,7 @@ function relationshipNote(type: RelationshipType, fromId: string): string {
     case 'overrides': return `Overrides ${fromId}`
     case 'depends-on': return `Depends on ${fromId}`
     case 'inferred-by': return `Follows from ${fromId}`
+    case 'supersedes': return `Supersedes ${fromId}`
   }
 }
 
@@ -53,6 +54,13 @@ export async function query(queryText: string, topN = 5): Promise<RetrievalResul
     score,
     surfacedVia: 'direct',
     relevanceNote: `Similarity: ${score.toFixed(3)}`,
+    why: entry.why,
+    alternatives: entry.alternatives,
+    category: entry.category,
+    weight: entry.weight,
+    dependsOn: entry.relationships
+      .filter(r => r.type === 'depends-on')
+      .map(r => r.target),
   }))
 
   // Relationship expansion — follow links from top results
@@ -74,6 +82,13 @@ export async function query(queryText: string, topN = 5): Promise<RetrievalResul
         surfacedVia: 'relationship',
         relationshipType: rel.type as RelationshipType,
         relevanceNote: relationshipNote(rel.type as RelationshipType, entry.id),
+        why: related.why,
+        alternatives: related.alternatives,
+        category: related.category,
+        weight: related.weight,
+        dependsOn: related.relationships
+          .filter(r => r.type === 'depends-on')
+          .map(r => r.target),
       })
     }
   }

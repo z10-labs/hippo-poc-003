@@ -15,6 +15,40 @@ async function runIndex() {
   console.log(`\nDone. ${indexed} document(s) indexed, ${skipped} unchanged.`)
 }
 
+function formatResult(r: Awaited<ReturnType<typeof query>>[number], verbose: boolean): string {
+  const lines: string[] = []
+  const badge = r.surfacedVia === 'direct'
+    ? `[${r.score.toFixed(3)}]`
+    : `[via ${r.relationshipType} from ${r.relevanceNote.split(' ').pop()}]`
+
+  const meta = [r.category, r.weight].filter(Boolean).join(' · ')
+  lines.push(`${r.id}  ${badge}  ${meta ? `(${meta})` : ''}`)
+  lines.push(`  ${r.title}`)
+
+  if (verbose || r.surfacedVia === 'direct') {
+    if (r.why) {
+      const wrapped = r.why.length > 160
+        ? r.why.slice(0, 157) + '…'
+        : r.why
+      lines.push(`  Why: ${wrapped}`)
+    }
+
+    const alts = r.alternatives?.trim()
+    if (alts) {
+      const altLines = alts.split('\n').slice(0, 3)
+      lines.push(`  Rejected: ${altLines[0]}`)
+      for (const a of altLines.slice(1)) lines.push(`           ${a}`)
+    }
+
+    const deps = r.dependsOn ?? []
+    if (deps.length > 0) {
+      lines.push(`  Depends on: ${deps.join(', ')}`)
+    }
+  }
+
+  return lines.join('\n')
+}
+
 async function runQuery() {
   const queryText = args.filter(a => !a.startsWith('--')).join(' ').trim()
   if (!queryText) {
@@ -23,6 +57,7 @@ async function runQuery() {
   }
 
   const topN = parseInt(args.find(a => a.startsWith('--top='))?.split('=')?.[1] ?? '5', 10)
+  const verbose = args.includes('--verbose')
 
   console.log(`\nQuerying: "${queryText}"\n`)
   const results = await query(queryText, topN)
@@ -36,13 +71,7 @@ async function runQuery() {
   console.log('─'.repeat(70))
 
   for (const r of results) {
-    const badge = r.surfacedVia === 'direct'
-      ? `[direct  | score: ${r.score.toFixed(3)}]`
-      : `[via ${r.relationshipType?.padEnd(11)} | ${r.relevanceNote}]`
-
-    console.log(`${r.id.padEnd(10)} ${badge}`)
-    console.log(`  Title   : ${r.title}`)
-    console.log(`  File    : ${r.filePath}`)
+    console.log(formatResult(r, verbose))
     console.log()
   }
 }
@@ -56,11 +85,61 @@ async function surfaceRelated(description: string): Promise<void> {
 
   if (direct.length === 0) return
 
-  console.log('[Hippocampus] Related decisions found — add depends-on to your description if any influenced this choice:')
+  console.log('[Hippocampus] Related decisions — add depends-on DR-NNNN to your description if any apply:')
   console.log('─'.repeat(70))
   for (const r of direct) {
-    console.log(`  ${r.id.padEnd(10)} [score: ${r.score.toFixed(3)}]  ${r.title}`)
+    console.log(`  ${r.id}  [${r.score.toFixed(3)}]  ${r.title}`)
+    if (r.why) {
+      const short = r.why.length > 120 ? r.why.slice(0, 117) + '…' : r.why
+      console.log(`         Why: ${short}`)
+    }
   }
+  console.log()
+}
+
+async function runChain() {
+  const targetId = args.find(a => /^DR-\d+$/i.test(a))?.toUpperCase()
+  if (!targetId) {
+    console.error('Usage: npm run hippocampus:chain -- DR-NNNN')
+    process.exit(1)
+  }
+
+  const index = loadIndex()
+  const entryById = new Map(index.entries.map(e => [e.id, e]))
+
+  function printChain(id: string, depth: number, visited: Set<string>) {
+    if (visited.has(id)) return
+    visited.add(id)
+    const entry = entryById.get(id)
+    if (!entry) {
+      console.log(`${'  '.repeat(depth)}${id}  (not in index)`)
+      return
+    }
+    const indent = '  '.repeat(depth)
+    const marker = depth === 0 ? '▶' : '└─'
+    console.log(`${indent}${marker} ${entry.id}  (${entry.category} · ${entry.weight})`)
+    console.log(`${indent}   ${entry.title}`)
+    if (entry.why) {
+      const short = entry.why.length > 100 ? entry.why.slice(0, 97) + '…' : entry.why
+      console.log(`${indent}   Why: ${short}`)
+    }
+    const alts = entry.alternatives?.trim()
+    if (alts) {
+      const first = alts.split('\n')[0]
+      console.log(`${indent}   Rejected: ${first}`)
+    }
+    const deps = entry.relationships.filter(r => r.type === 'depends-on')
+    const unvisitedDeps = deps.filter(d => !visited.has(d.target))
+    if (unvisitedDeps.length > 0) {
+      console.log(`${indent}   ─── depends on ───`)
+      for (const dep of deps) {
+        printChain(dep.target, depth + 1, visited)
+      }
+    }
+  }
+
+  console.log(`\nDecision chain for ${targetId}:\n`)
+  printChain(targetId, 0, new Set())
   console.log()
 }
 
@@ -125,6 +204,9 @@ async function main() {
     case 'query':
       await runQuery()
       break
+    case 'chain':
+      await runChain()
+      break
     case 'log':
       await runLog()
       break
@@ -136,6 +218,8 @@ Commands:
   npm run hippocampus:index              Build/update the vector index
   npm run hippocampus:index -- --force   Full rebuild of the index
   npm run hippocampus:query -- "task"    Query relevant past decisions
+  npm run hippocampus:query -- "task" --verbose  Include Why/Alternatives for all results
+  npm run hippocampus:chain -- DR-NNNN   Trace full dependency chain from a record
   npm run hippocampus:log   -- "desc"    Classify and record a decision
       `.trim())
   }

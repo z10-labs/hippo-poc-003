@@ -34,7 +34,10 @@ export function classifyAuto(description: string): ClassificationResult {
     return { weight: 'skip', category: null, reason: 'Implementation-level detail' }
   }
 
-  if (/\b(defer|deferred|skip for now|revisit later|post-mvp|not yet|hold off)\b/.test(lower)) {
+  // Only trigger deferral on clearly intentional first-person phrases.
+  // Avoid false positives from architectural option labels like "deferred evaluation"
+  // or "not yet indexed" — these describe system behaviour, not a decision being deferred.
+  if (/\b(skip for now|revisit later|post-mvp|hold off|consciously not deciding|not deciding yet|choosing not to decide)\b/.test(lower)) {
     return { weight: 'deferred', category: null, reason: 'Explicit deferral detected' }
   }
 

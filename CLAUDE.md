@@ -10,15 +10,38 @@ Before any non-trivial decision, query past decisions:
 cd hippocampus && npm run hippocampus:query -- "describe what you are about to do"
 ```
 
+The query output now shows inline **Why**, **Rejected alternatives**, and **Depends-on** for each result — read these directly rather than opening every record file.
+
+To trace the full dependency chain of a specific decision:
+
+```
+cd hippocampus && npm run hippocampus:chain -- DR-NNNN
+```
+
 After making any significant decision:
 
 ```
 cd hippocampus && npm run hippocampus:log -- "what you decided and why" --autonomous
 ```
 
-The log command automatically surfaces related past decisions. When it prints related DRs, check each one — if it constrained your choice, add `depends-on DR-NNNN` to your description and re-run.
+The log command automatically surfaces related past decisions with inline Why summaries. When it prints related DRs, check each one — if it constrained your choice, add `depends-on DR-NNNN` to your description and re-run.
 
 Decision records live in: `.decisions/records/`
+
+### Writing good log descriptions
+
+For each decision, your description should cover three things in natural prose:
+1. **What you chose** — name the approach
+2. **What you rejected** — use "X is rejected because Y" or "rejected X because Y" for each alternative
+3. **What this depends on** — use "depends on DR-NNNN" for each prior decision that constrained your choice
+
+Example:
+```
+Use a single SQLite transaction for all bulk inserts. Individual inserts in a loop
+are rejected because partial success leaves the queue in an ambiguous state.
+A separate staging table is rejected because the concern is 1:1 with existing job rows.
+depends on DR-0001 (SQLite single-process model), depends on DR-0003 (retry counter pattern).
+```
 
 ## Setup (first run)
 

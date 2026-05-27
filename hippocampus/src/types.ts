@@ -20,7 +20,7 @@ export type DecisionWeight = 'heavy' | 'standard' | 'light' | 'deferred' | 'skip
 
 export type DecisionStatus = 'proposed' | 'accepted' | 'deprecated' | `superseded by DR-${string}`
 
-export type RelationshipType = 'overrides' | 'inferred-by' | 'depends-on'
+export type RelationshipType = 'overrides' | 'inferred-by' | 'depends-on' | 'supersedes'
 
 export interface Relationship {
   type: RelationshipType
@@ -74,6 +74,11 @@ export interface RetrievalResult {
   surfacedVia: 'direct' | 'relationship'
   relationshipType?: RelationshipType
   relevanceNote: string
+  why?: string          // first 200 chars of the Why/Context section
+  alternatives?: string // extracted alternatives, newline-separated
+  category?: string
+  weight?: string
+  dependsOn?: string[]  // DR-NNNN ids
 }
 
 export interface IndexMetadata {
